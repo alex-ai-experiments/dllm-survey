@@ -1,0 +1,448 @@
+[
+  {
+    "id": "commit_001",
+    "complexity": "multi-file",
+    "files": [
+      {
+        "filename": "src/Lucene.Net/Store/FSDirectory.cs",
+        "additions": 5,
+        "deletions": 1,
+        "diff": "diff --git a/src/Lucene.Net/Store/FSDirectory.cs b/src/Lucene.Net/Store/FSDirectory.cs\nindex 11aa22bb..33cc44dd 100644\n--- a/src/Lucene.Net/Store/FSDirectory.cs\n+++ b/src/Lucene.Net/Store/FSDirectory.cs\n@@ -300,7 +300,11 @@ public override string[] ListAll()\n         {\n             EnsureOpen();\n             string[] entries = m_directory.GetFileSystemEntries();\n-            if (entries == null)\n+            if (entries == null)\n+            {\n+                throw new IOException($\"Cannot read directory {m_directory.FullName}: list is null.\");\n+            }\n+            \n             return entries;\n         }\n     }"
+      },
+      {
+        "filename": "src/Lucene.Net/Store/SimpleFSDirectory.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/src/Lucene.Net/Store/SimpleFSDirectory.cs b/src/Lucene.Net/Store/SimpleFSDirectory.cs\nindex ee66ff77..88aa99bb 100644\n--- a/src/Lucene.Net/Store/SimpleFSDirectory.cs\n+++ b/src/Lucene.Net/Store/SimpleFSDirectory.cs\n@@ -45,6 +45,7 @@ public SimpleFSDirectory(DirectoryInfo path, LockFactory lockFactory) : base(pat\n         }\n     }"
+      },
+      {
+        "filename": "src/Lucene.Net/Store/NIOFSDirectory.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/src/Lucene.Net/Store/NIOFSDirectory.cs b/src/Lucene.Net/Store/NIOFSDirectory.cs\nindex aa22bb33..cc44dd55 100644\n--- a/src/Lucene.Net/Store/NIOFSDirectory.cs\n+++ b/src/Lucene.Net/Store/NIOFSDirectory.cs\n@@ -55,6 +55,7 @@ public NIOFSDirectory(DirectoryInfo path, LockFactory lockFactory) : base(path, \n         }\n     }"
+      },
+      {
+        "filename": "src/Lucene.Net/Store/MMapDirectory.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/src/Lucene.Net/Store/MMapDirectory.cs b/src/Lucene.Net/Store/MMapDirectory.cs\nindex 44dd55ee..66ff77aa 100644\n--- a/src/Lucene.Net/Store/MMapDirectory.cs\n+++ b/src/Lucene.Net/Store/MMapDirectory.cs\n@@ -150,7 +150,7 @@ public MMapDirectory(DirectoryInfo path, LockFactory lockFactory) : base(path, l\n         }\n         \n         // other overrides inheriting the base ListAll() logic\n     }"
+      },
+      {
+        "filename": "src/Lucene.Net.Tests/Store/TestFSDirectory.cs",
+        "additions": 9,
+        "deletions": 0,
+        "diff": "diff --git a/src/Lucene.Net.Tests/Store/TestFSDirectory.cs b/src/Lucene.Net.Tests/Store/TestFSDirectory.cs\nindex bb88cc99..dd00ee11 100644\n--- a/src/Lucene.Net.Tests/Store/TestFSDirectory.cs\n+++ b/src/Lucene.Net.Tests/Store/TestFSDirectory.cs\n@@ -120,4 +120,13 @@ public void TestListAll()\n         Assert.AreEqual(2, entries.Length);\n     }\n+\n+    [Test]\n+    public void TestListAllEmptyOrNullReturnsCorrectly()\n+    {\n+        using var dir = new SimpleFSDirectory(CreateTempDir(\"emptyDir\"));\n+        var entries = dir.ListAll();\n+        Assert.IsNotNull(entries);\n+        Assert.AreEqual(0, entries.Length);\n+    }\n }"
+      }
+    ],
+    "candidates": {
+      "human": "Fix NullReferenceException in FSDirectory.ListAll() when directory is empty or inaccessible",
+      "llm_only": "Improve directory listing error handling and add test for null entries",
+      "dllm_only": "Added handling to manage null directory entries and added a new test case to ensure ListAll returns correctly for empty directories",
+      "llm_llm": "Improve robustness and test coverage for directory implementations",
+      "dllm_llm": "feat: Add support for custom lock factories in FSDirectory derivatives and related tests",
+      "dllm_dllm": "feat(directory): Add support for custom locking mechanisms in SimpleFSDirectory, NIOFSDirectory, and MMapDirectory"
+    }
+  },
+  {
+    "id": "commit_002",
+    "complexity": "multi-file",
+    "files": [
+      {
+        "filename": "csharp/src/Apache.Arrow/Arrays/StringArray.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/csharp/src/Apache.Arrow/Arrays/StringArray.cs b/csharp/src/Apache.Arrow/Arrays/StringArray.cs\nindex 22bb33cc..44dd55ee 100644\n--- a/csharp/src/Apache.Arrow/Arrays/StringArray.cs\n+++ b/csharp/src/Apache.Arrow/Arrays/StringArray.cs\n@@ -35,6 +35,7 @@ public class StringArray : BinaryArray\n         }\n     }"
+      },
+      {
+        "filename": "csharp/src/Apache.Arrow/Builder/StringArrayBuilder.cs",
+        "additions": 5,
+        "deletions": 2,
+        "diff": "diff --git a/csharp/src/Apache.Arrow/Builder/StringArrayBuilder.cs b/csharp/src/Apache.Arrow/Builder/StringArrayBuilder.cs\nindex aa88bb99..cc00dd11 100644\n--- a/csharp/src/Apache.Arrow/Builder/StringArrayBuilder.cs\n+++ b/csharp/src/Apache.Arrow/Builder/StringArrayBuilder.cs\n@@ -65,8 +65,11 @@ public StringArrayBuilder Append(string value)\n         {\n             if (value == null) return AppendNull();\n \n-            byte[] bytes = Encoding.UTF8.GetBytes(value);\n-            return Append(bytes);\n+            int byteCount = Encoding.UTF8.GetByteCount(value);\n+            var span = ValueBuffer.Reserve(byteCount);\n+            Encoding.UTF8.GetBytes(value.AsSpan(), span);\n+            ValueOffsets.Append(ValueBuffer.Length);\n+            return this;\n         }\n \n         public StringArrayBuilder Append(ReadOnlySpan<char> value)"
+      },
+      {
+        "filename": "csharp/src/Apache.Arrow/Builder/IStringArrayBuilder.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/csharp/src/Apache.Arrow/Builder/IStringArrayBuilder.cs b/csharp/src/Apache.Arrow/Builder/IStringArrayBuilder.cs\nindex 55ee66ff..77aa88bb 100644\n--- a/csharp/src/Apache.Arrow/Builder/IStringArrayBuilder.cs\n+++ b/csharp/src/Apache.Arrow/Builder/IStringArrayBuilder.cs\n@@ -20,6 +20,7 @@ public interface IStringArrayBuilder\n         IStringArrayBuilder Append(string value);\n         IStringArrayBuilder Append(ReadOnlySpan<char> value);\n     }"
+      },
+      {
+        "filename": "csharp/test/Apache.Arrow.Tests/StringArrayBuilderTests.cs",
+        "additions": 8,
+        "deletions": 0,
+        "diff": "diff --git a/csharp/test/Apache.Arrow.Tests/StringArrayBuilderTests.cs b/csharp/test/Apache.Arrow.Tests/StringArrayBuilderTests.cs\nindex dd11ee22..ff33aa44 100644\n--- a/csharp/test/Apache.Arrow.Tests/StringArrayBuilderTests.cs\n+++ b/csharp/test/Apache.Arrow.Tests/StringArrayBuilderTests.cs\n@@ -80,4 +80,12 @@ public void AppendNull()\n         Assert.True(array.IsNull(0));\n     }\n+\n+    [Fact]\n+    public void AppendStringSpanAllocatesCorrectly()\n+    {\n+        var builder = new StringArrayBuilder();\n+        builder.Append(\"test\".AsSpan());\n+        Assert.Equal(\"test\", builder.Build().GetString(0));\n+    }\n }"
+      },
+      {
+        "filename": "csharp/test/Apache.Arrow.Benchmarks/StringArrayBuilderBenchmarks.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/csharp/test/Apache.Arrow.Benchmarks/StringArrayBuilderBenchmarks.cs b/csharp/test/Apache.Arrow.Benchmarks/StringArrayBuilderBenchmarks.cs\nindex 11aa22bb..33cc44dd 100644\n--- a/csharp/test/Apache.Arrow.Benchmarks/StringArrayBuilderBenchmarks.cs\n+++ b/csharp/test/Apache.Arrow.Benchmarks/StringArrayBuilderBenchmarks.cs\n@@ -30,6 +30,12 @@ public void AppendString()\n             _builder.Append(\"benchmark string value\");\n         }\n     }"
+      }
+    ],
+    "candidates": {
+      "human": "Optimize StringArray.Builder.Append(string) to prevent intermediate byte[] allocations using Encoding.GetBytes",
+      "llm_only": "Refactor and add tests for StringArrayBuilder append operations",
+      "dllm_only": "Refactor StringArrayBuilder to use ReadOnlySpan<char> for better and improve benchmark performance",
+      "llm_llm": "Refactor string array handling to improve performance and add benchmarking",
+      "dllm_llm": "feat(csharp): Add support for string arrays and improve builder performance",
+      "dllm_dllm": "feat(server): Add new API endpoint for user registration"
+    }
+  },
+  {
+    "id": "commit_003",
+    "complexity": "multi-file",
+    "files": [
+      {
+        "filename": "src/DotPulsar/Internal/ConnectionPool.cs",
+        "additions": 2,
+        "deletions": 2,
+        "diff": "diff --git a/src/DotPulsar/Internal/ConnectionPool.cs b/src/DotPulsar/Internal/ConnectionPool.cs\nindex ee55ff66..aa77bb88 100644\n--- a/src/DotPulsar/Internal/ConnectionPool.cs\n+++ b/src/DotPulsar/Internal/ConnectionPool.cs\n@@ -80,11 +80,19 @@ private async ValueTask<IConnection> EstablishConnection(PulsarUrl url, Cancella\n         {\n             var connection = new Connection(url);\n             try\n             {\n                 await connection.Connect(cancellationToken).ConfigureAwait(false);\n                 return connection;\n             }\n-            catch\n+            catch (Exception)\n             {\n-                // Previously missed disposing connection on timeout\n+                await connection.DisposeAsync().ConfigureAwait(false);\n                 throw;\n             }\n         }"
+      },
+      {
+        "filename": "src/DotPulsar/Internal/Connection.cs",
+        "additions": 5,
+        "deletions": 0,
+        "diff": "diff --git a/src/DotPulsar/Internal/Connection.cs b/src/DotPulsar/Internal/Connection.cs\nindex bb22cc33..dd44ee55 100644\n--- a/src/DotPulsar/Internal/Connection.cs\n+++ b/src/DotPulsar/Internal/Connection.cs\n@@ -110,6 +110,10 @@ public async Task Connect(CancellationToken cancellationToken)\n         {\n             // Handshake logic\n         }\n+\n+        public ValueTask DisposeAsync()\n+        {\n+            // Clean up sockets\n+        }\n     }"
+      },
+      {
+        "filename": "src/DotPulsar/Internal/Abstractions/IConnectionPool.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/src/DotPulsar/Internal/Abstractions/IConnectionPool.cs b/src/DotPulsar/Internal/Abstractions/IConnectionPool.cs\nindex aa11bb22..cc33dd44 100644\n--- a/src/DotPulsar/Internal/Abstractions/IConnectionPool.cs\n+++ b/src/DotPulsar/Internal/Abstractions/IConnectionPool.cs\n@@ -15,6 +15,7 @@ public interface IConnectionPool : IAsyncDisposable\n     {\n         ValueTask<IConnection> FindConnectionForTopic(string topic, CancellationToken cancellationToken);\n     }"
+      },
+      {
+        "filename": "src/DotPulsar/Internal/Exceptions/ConnectionHandshakeException.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/src/DotPulsar/Internal/Exceptions/ConnectionHandshakeException.cs b/src/DotPulsar/Internal/Exceptions/ConnectionHandshakeException.cs\nindex cc44dd55..ee66ff77 100644\n--- a/src/DotPulsar/Internal/Exceptions/ConnectionHandshakeException.cs\n+++ b/src/DotPulsar/Internal/Exceptions/ConnectionHandshakeException.cs\n@@ -20,6 +20,7 @@ public class ConnectionHandshakeException : DotPulsarException\n         }\n     }"
+      },
+      {
+        "filename": "tests/DotPulsar.Tests/Internal/ConnectionPoolTests.cs",
+        "additions": 7,
+        "deletions": 0,
+        "diff": "diff --git a/tests/DotPulsar.Tests/Internal/ConnectionPoolTests.cs b/tests/DotPulsar.Tests/Internal/ConnectionPoolTests.cs\nindex 11aa22bb..33cc44dd 100644\n--- a/tests/DotPulsar.Tests/Internal/ConnectionPoolTests.cs\n+++ b/tests/DotPulsar.Tests/Internal/ConnectionPoolTests.cs\n@@ -60,4 +60,13 @@ public async Task GetConnection_WhenSuccessful_ShouldReturnConnection()\n         Assert.NotNull(connection);\n     }\n+\n+    [Fact]\n+    public async Task GetConnection_WhenHandshakeTimesOut_ShouldDisposeConnection()\n+    {\n+        // Arrange & Act\n+        // Assert that connection disposal was invoked via mock\n+    }\n }"
+      },
+      {
+        "filename": "tests/DotPulsar.Tests/Internal/ConnectionTests.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/tests/DotPulsar.Tests/Internal/ConnectionTests.cs b/tests/DotPulsar.Tests/Internal/ConnectionTests.cs\nindex 55ee66ff..77aa88bb 100644\n--- a/tests/DotPulsar.Tests/Internal/ConnectionTests.cs\n+++ b/tests/DotPulsar.Tests/Internal/ConnectionTests.cs\n@@ -25,4 +25,8 @@ public void Connect_ShouldThrowOnInvalidUrl()\n         // Assert\n     }\n }"
+      }
+    ],
+    "candidates": {
+      "human": "Fix connection leak in ConnectionPool by properly disposing connections when the broker handshake times out",
+      "llm_only": "Implement async disposal for Connection and ensure connections are properly disposed on handshake timeout",
+      "dllm_only": "Refactor connection pool and connection classes to include async disposal and handle connection timeouts",
+      "llm_llm": "feat: Add connection management and error handling improvements in Pulsar client library",
+      "dllm_llm": "feat: Add async disposal and connection management improvements in DotPulsar",
+      "dllm_dllm": "feat(test): Add new test method Connect_ShouldThrowOnInvalidUrl in ConnectionTests.cs"
+    }
+  },
+  {
+    "id": "commit_004",
+    "complexity": "multi-file",
+    "files": [
+      {
+        "filename": "modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/Cache/CacheClient.cs",
+        "additions": 2,
+        "deletions": 1,
+        "diff": "diff --git a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/Cache/CacheClient.cs b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/Cache/CacheClient.cs\nindex 99aabbcc..ddeeff00 100644\n--- a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/Cache/CacheClient.cs\n+++ b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/Cache/CacheClient.cs\n@@ -405,7 +405,7 @@ private int GetPartition(TK key)\n         {\n             var affinity = _ignite.GetAffinity(_cacheName);\n-            return affinity.GetPartition(key);\n+            return affinity.GetPartition(GetAffinityKey(key));\n         }\n \n+        private object GetAffinityKey(TK key) => _ignite.Binary.GetAffinityKey(key) ?? key;\n     }"
+      },
+      {
+        "filename": "modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/ClientAffinityTopologyVersion.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/ClientAffinityTopologyVersion.cs b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/ClientAffinityTopologyVersion.cs\nindex 55667788..99aabbcc 100644\n--- a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/ClientAffinityTopologyVersion.cs\n+++ b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/ClientAffinityTopologyVersion.cs\n@@ -40,6 +40,7 @@ public struct ClientAffinityTopologyVersion\n         // Version struct\n     }\n }"
+      },
+      {
+        "filename": "modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/Cache/ClientCachePartitionAwarenessGroup.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/Cache/ClientCachePartitionAwarenessGroup.cs b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/Cache/ClientCachePartitionAwarenessGroup.cs\nindex ccdd1122..eeff3344 100644\n--- a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/Cache/ClientCachePartitionAwarenessGroup.cs\n+++ b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Client/Cache/ClientCachePartitionAwarenessGroup.cs\n@@ -25,6 +25,7 @@ internal class ClientCachePartitionAwarenessGroup\n         // Group mappings\n     }\n }"
+      },
+      {
+        "filename": "modules/platforms/dotnet/Apache.Ignite.Core/Impl/Binary/BinaryWriter.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Binary/BinaryWriter.cs b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Binary/BinaryWriter.cs\nindex aabbccdd..eeff0011 100644\n--- a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Binary/BinaryWriter.cs\n+++ b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Binary/BinaryWriter.cs\n@@ -85,6 +85,7 @@ public void WriteInt(int val)\n         // write logic\n     }\n }"
+      },
+      {
+        "filename": "modules/platforms/dotnet/Apache.Ignite.Core.Tests/Client/Cache/PartitionAwarenessTest.cs",
+        "additions": 8,
+        "deletions": 0,
+        "diff": "diff --git a/modules/platforms/dotnet/Apache.Ignite.Core.Tests/Client/Cache/PartitionAwarenessTest.cs b/modules/platforms/dotnet/Apache.Ignite.Core.Tests/Client/Cache/PartitionAwarenessTest.cs\nindex 11223344..55667788 100644\n--- a/modules/platforms/dotnet/Apache.Ignite.Core.Tests/Client/Cache/PartitionAwarenessTest.cs\n+++ b/modules/platforms/dotnet/Apache.Ignite.Core.Tests/Client/Cache/PartitionAwarenessTest.cs\n@@ -150,6 +150,14 @@ public void TestPutGet_RoutesToCorrectNode()\n         Assert.AreEqual(1, cache.Get(1));\n     }\n+\n+    [Test]\n+    public void TestCompositeKey_RoutesToCorrectNode()\n+    {\n+        var key = new CompositeKey(1, \"test\");\n+        _cache.Put(key, \"value\");\n+        // Assert node routing via metrics\n+    }\n }"
+      }
+    ],
+    "candidates": {
+      "human": "Fix partition awareness mapping for cache operations using composite keys",
+      "llm_only": "Add test for composite key routing and update partition awareness logic",
+      "dllm_only": "Add new test for composite key routing and update BinaryWriter to CacheClient to use binary affinity key instead of binary key",
+      "llm_llm": "feat: Add partition awareness tests, enhance binary writer, improve partition retrieval consistency, and manage group mappings for client cache",
+      "dllm_llm": "feat: Add integer writing method and update cache client partition handling",
+      "dllm_dllm": "feat(server): Add new API method for writing integer values to binary format"
+    }
+  },
+  {
+    "id": "commit_005",
+    "complexity": "multi-file",
+    "files": [
+      {
+        "filename": "lang/csharp/src/apache/main/Specific/SpecificReader.cs",
+        "additions": 8,
+        "deletions": 1,
+        "diff": "diff --git a/lang/csharp/src/apache/main/Specific/SpecificReader.cs b/lang/csharp/src/apache/main/Specific/SpecificReader.cs\nindex ccdd2233..eeff4455 100644\n--- a/lang/csharp/src/apache/main/Specific/SpecificReader.cs\n+++ b/lang/csharp/src/apache/main/Specific/SpecificReader.cs\n@@ -110,7 +110,14 @@ protected virtual object ReadLogical(object reuse, LogicalSchema writerSchema, L\n         {\n             var logicalType = writerSchema.LogicalType;\n-            var clrType = logicalType.GetClrType(writerSchema);\n+            \n+            var baseSchema = readerSchema.BaseSchema;\n+            if (baseSchema.Type == Schema.Type.Union && ((UnionSchema)baseSchema).Schemas.Any(s => s.Type == Schema.Type.Null))\n+            {\n+                // Treat as nullable\n+            }\n+\n+            var clrType = logicalType.GetClrType(writerSchema);\n             return logicalType.ConvertToLogicalValue(baseValue, writerSchema);\n         }\n     }"
+      },
+      {
+        "filename": "lang/csharp/src/apache/main/Specific/SpecificDefaultReader.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/lang/csharp/src/apache/main/Specific/SpecificDefaultReader.cs b/lang/csharp/src/apache/main/Specific/SpecificDefaultReader.cs\nindex aabbccdd..eeff1122 100644\n--- a/lang/csharp/src/apache/main/Specific/SpecificDefaultReader.cs\n+++ b/lang/csharp/src/apache/main/Specific/SpecificDefaultReader.cs\n@@ -55,6 +55,7 @@ protected override object ReadRecord(object reuse, RecordSchema writerSchema, Sc\n         // Generic record reading\n     }\n }"
+      },
+      {
+        "filename": "lang/csharp/src/apache/main/LogicalType.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/lang/csharp/src/apache/main/LogicalType.cs b/lang/csharp/src/apache/main/LogicalType.cs\nindex 11223344..55667788 100644\n--- a/lang/csharp/src/apache/main/LogicalType.cs\n+++ b/lang/csharp/src/apache/main/LogicalType.cs\n@@ -20,6 +20,7 @@ public abstract class LogicalType\n     {\n         public abstract Type GetClrType(Schema schema);\n     }\n }"
+      },
+      {
+        "filename": "lang/csharp/src/apache/main/Schema/LogicalSchema.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/lang/csharp/src/apache/main/Schema/LogicalSchema.cs b/lang/csharp/src/apache/main/Schema/LogicalSchema.cs\nindex 99aabbcc..ddeeff00 100644\n--- a/lang/csharp/src/apache/main/Schema/LogicalSchema.cs\n+++ b/lang/csharp/src/apache/main/Schema/LogicalSchema.cs\n@@ -35,6 +35,7 @@ public class LogicalSchema : Schema\n         public LogicalType LogicalType { get; set; }\n         public Schema BaseSchema { get; set; }\n     }\n }"
+      },
+      {
+        "filename": "lang/csharp/src/apache/test/Specific/SpecificTests.cs",
+        "additions": 8,
+        "deletions": 0,
+        "diff": "diff --git a/lang/csharp/src/apache/test/Specific/SpecificTests.cs b/lang/csharp/src/apache/test/Specific/SpecificTests.cs\nindex 55667788..99aabbcc 100644\n--- a/lang/csharp/src/apache/test/Specific/SpecificTests.cs\n+++ b/lang/csharp/src/apache/test/Specific/SpecificTests.cs\n@@ -250,4 +250,13 @@ public void TestLogicalTypeDecimal()\n         // Assert\n     }\n+\n+    [Test]\n+    public void TestNullableLogicalTypeDecimal()\n+    {\n+        // Arrange schema with union of null and decimal\n+        // Act reader\n+        // Assert correct deserialization to nullable decimal\n+    }\n }"
+      }
+    ],
+    "candidates": {
+      "human": "Fix LogicalType mapping for nullable decimal fields in SpecificReader",
+      "llm_only": "Refactor and add tests for nullable logical type handling",
+      "dllm_only": "Add new test case for nullable LogicalTypeDecimal serialization",
+      "llm_llm": "feat: Extend LogicalType and LogicalSchema for enhanced type handling, add specific reader methods and tests for nullable decimal deserialization",
+      "dllm_llm": "feat: Introduce LogicalType and LogicalSchema for unified type handling and add tests for nullable decimal deserialization",
+      "dllm_dllm": "Introduce `LogicalType` abstract class and related changes to the Apache Ign project, enabling better handling and conversion between logical types and their CLR representations"
+    }
+  },
+  {
+    "id": "commit_006",
+    "complexity": "multi-file",
+    "files": [
+      {
+        "filename": "lib/csharp/src/Server/TThreadPoolServer.cs",
+        "additions": 8,
+        "deletions": 1,
+        "diff": "diff --git a/lib/csharp/src/Server/TThreadPoolServer.cs b/lib/csharp/src/Server/TThreadPoolServer.cs\nindex 11aa22bb..33cc44dd 100644\n--- a/lib/csharp/src/Server/TThreadPoolServer.cs\n+++ b/lib/csharp/src/Server/TThreadPoolServer.cs\n@@ -150,8 +150,15 @@ public override void Stop()\n         {\n             stop = true;\n             serverTransport.Close();\n-            // Previously we just returned, leaving threads hanging\n+            \n+            lock (clientLock)\n+            {\n+                foreach (var thread in activeClientThreads)\n+                {\n+                    thread.Join(TimeSpan.FromMilliseconds(500));\n+                }\n+            }\n         }\n     }"
+      },
+      {
+        "filename": "lib/csharp/src/Server/TServer.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/lib/csharp/src/Server/TServer.cs b/lib/csharp/src/Server/TServer.cs\nindex 44dd55ee..66ff77aa 100644\n--- a/lib/csharp/src/Server/TServer.cs\n+++ b/lib/csharp/src/Server/TServer.cs\n@@ -45,6 +45,7 @@ public abstract class TServer\n         protected TServerEventHandler serverEventHandler;\n         protected volatile bool stop = false;\n \n         public abstract void Serve();\n         public abstract void Stop();\n     }"
+      },
+      {
+        "filename": "lib/csharp/src/Transport/TServerTransport.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/lib/csharp/src/Transport/TServerTransport.cs b/lib/csharp/src/Transport/TServerTransport.cs\nindex aa22bb33..cc44dd55 100644\n--- a/lib/csharp/src/Transport/TServerTransport.cs\n+++ b/lib/csharp/src/Transport/TServerTransport.cs\n@@ -25,6 +25,7 @@ public abstract class TServerTransport\n     {\n         public abstract void Listen();\n         public abstract void Close();\n         protected abstract TTransport AcceptImpl();\n     }"
+      },
+      {
+        "filename": "lib/csharp/test/Server/TThreadPoolServerTests.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/lib/csharp/test/Server/TThreadPoolServerTests.cs b/lib/csharp/test/Server/TThreadPoolServerTests.cs\nindex ee66ff77..88aa99bb 100644\n--- a/lib/csharp/test/Server/TThreadPoolServerTests.cs\n+++ b/lib/csharp/test/Server/TThreadPoolServerTests.cs\n@@ -60,4 +60,11 @@ public void TestServerStartsAndAccepts()\n         // Assert\n     }\n }"
+      },
+      {
+        "filename": "lib/csharp/test/Server/ServerShutdownTests.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/lib/csharp/test/Server/ServerShutdownTests.cs b/lib/csharp/test/Server/ServerShutdownTests.cs\nindex bb88cc99..dd00ee11 100644\n--- a/lib/csharp/test/Server/ServerShutdownTests.cs\n+++ b/lib/csharp/test/Server/ServerShutdownTests.cs\n@@ -40,4 +40,14 @@ public void ThreadPoolServer_Stop_ShouldJoinClientThreads()\n         server.Stop();\n         \n         Assert.IsFalse(thread.IsAlive);\n     }\n }"
+      }
+    ],
+    "candidates": {
+      "human": "Fix TThreadPoolServer hang during Stop() by correctly signaling and joining active client threads",
+      "llm_only": "Improve thread management during server stop to ensure all client threads are joined",
+      "dllm_only": "Refactor TThreadPoolServer.cs to ensure all client threads are joined before stopping the server",
+      "llm_llm": "Improve server shutdown handling and event-driven capabilities",
+      "dllm_llm": "feat: Add test methods for server startup, connection handling, and shutdown with thread pool server",
+      "dllm_dllm": "feat(server): Add new test method `TestServerStartsAndAccepts` in `TThreadPoolServerTests.cs`, and introduce new abstract method `TTransportAcceptImpl()` in `TServerTransport.cs`, and add new member variable `TServerEventHandler"
+    }
+  },
+  {
+    "id": "commit_007",
+    "complexity": "multi-file",
+    "files": [
+      {
+        "filename": "src/Lucene.Net/Index/IndexWriter.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/src/Lucene.Net/Index/IndexWriter.cs b/src/Lucene.Net/Index/IndexWriter.cs\nindex 55ee66ff..77aa88bb 100644\n--- a/src/Lucene.Net/Index/IndexWriter.cs\n+++ b/src/Lucene.Net/Index/IndexWriter.cs\n@@ -220,6 +220,7 @@ public virtual void AddDocument(IEnumerable<IIndexableField> doc, Analyzer analy\n         {\n             EnsureOpen();\n             bool success = false;\n             try\n             {\n                 docWriter.UpdateDocument(doc, analyzer, null);"
+      },
+      {
+        "filename": "src/Lucene.Net/Index/DocumentsWriter.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/src/Lucene.Net/Index/DocumentsWriter.cs b/src/Lucene.Net/Index/DocumentsWriter.cs\nindex aa88bb99..cc00dd11 100644\n--- a/src/Lucene.Net/Index/DocumentsWriter.cs\n+++ b/src/Lucene.Net/Index/DocumentsWriter.cs\n@@ -65,6 +65,7 @@ internal bool UpdateDocument(IEnumerable<IIndexableField> doc, Analyzer analyzer\n         {\n             bool hasEvents = false;\n             ThreadState perThread = perThreadPool.GetAndLock(Thread.CurrentThread, this);\n             try\n             {\n                 // doc writing"
+      },
+      {
+        "filename": "src/Lucene.Net/Index/DocumentsWriterPerThread.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/src/Lucene.Net/Index/DocumentsWriterPerThread.cs b/src/Lucene.Net/Index/DocumentsWriterPerThread.cs\nindex 11aa22bb..33cc44dd 100644\n--- a/src/Lucene.Net/Index/DocumentsWriterPerThread.cs\n+++ b/src/Lucene.Net/Index/DocumentsWriterPerThread.cs\n@@ -30,6 +30,7 @@ internal class DocumentsWriterPerThread\n         public DocumentsWriterPerThread(DocumentsWriter writer)\n         {\n             // Initialization\n         }\n     }"
+      },
+      {
+        "filename": "src/Lucene.Net/Index/DocumentsWriterPerThreadPool.cs",
+        "additions": 1,
+        "deletions": 10,
+        "diff": "diff --git a/src/Lucene.Net/Index/DocumentsWriterPerThreadPool.cs b/src/Lucene.Net/Index/DocumentsWriterPerThreadPool.cs\nindex 22bb33cc..44dd55ee 100644\n--- a/src/Lucene.Net/Index/DocumentsWriterPerThreadPool.cs\n+++ b/src/Lucene.Net/Index/DocumentsWriterPerThreadPool.cs\n@@ -35,11 +35,16 @@ internal sealed class DocumentsWriterPerThreadPool\n     {\n         private readonly ReentrantLock globalLock = new ReentrantLock();\n-        private readonly List<ThreadState> threadStates = new List<ThreadState>();\n+        private readonly ThreadLocal<ThreadState> localThreadState = new ThreadLocal<ThreadState>();\n \n         public ThreadState GetAndLock(Thread requestingThread, DocumentsWriter documentsWriter)\n         {\n-            // Previously allocated new state or searched list, causing high contention and GC\n-            var state = localThreadState.Value;\n-            if (state == null)\n-            {\n-                state = new ThreadState(new DocumentsWriterPerThread(documentsWriter));\n-                localThreadState.Value = state;\n-            }\n-            state.Lock();\n-            return state;\n         }\n     }"
+      },
+      {
+        "filename": "src/Lucene.Net.Tests/Index/TestIndexWriterMemory.cs",
+        "additions": 6,
+        "deletions": 0,
+        "diff": "diff --git a/src/Lucene.Net.Tests/Index/TestIndexWriterMemory.cs b/src/Lucene.Net.Tests/Index/TestIndexWriterMemory.cs\nindex dd11ee22..ff33aa44 100644\n--- a/src/Lucene.Net.Tests/Index/TestIndexWriterMemory.cs\n+++ b/src/Lucene.Net.Tests/Index/TestIndexWriterMemory.cs\n@@ -80,4 +80,12 @@ public void TestMemoryUsageDoesNotGrow() \n         // Memory assertions\n     }\n+\n+    [Test]\n+    public void TestThreadLocalStateReuse()\n+    {\n+        // Validate multiple AddDocument calls on same thread don't allocate new ThreadStates\n+    }\n }"
+      }
+    ],
+    "candidates": {
+      "human": "Optimize IndexWriter memory usage by reusing thread-local DocumentsWriterPerThread instances to reduce GC overhead",
+      "llm_only": "Replace thread state management with ThreadLocal for improved concurrency",
+      "dllm_only": "Refactor thread state management to use ThreadLocal for better performance and reduced GC pressure",
+      "llm_llm": "Refactor and optimize thread management in Lucene.Net's indexing components",
+      "dllm_llm": "feat: Add flexible document addition and update methods in IndexWriter and update thread pool management",
+      "dllm_dllm": "Introduce new methods for adding and updating documents with optional analyzers, and add a test method to validate thread-local state reuse."
+    }
+  },
+  {
+    "id": "commit_008",
+    "complexity": "multi-file",
+    "files": [
+      {
+        "filename": "modules/platforms/dotnet/Apache.Ignite.Core/Impl/Binary/Marshaller.cs",
+        "additions": 7,
+        "deletions": 0,
+        "diff": "diff --git a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Binary/Marshaller.cs b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Binary/Marshaller.cs\nindex aa11bb22..cc33dd44 100644\n--- a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Binary/Marshaller.cs\n+++ b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Binary/Marshaller.cs\n@@ -115,6 +115,11 @@ public void Marshal<T>(T val, IBinaryStream stream)\n         {\n             if (val == null)\n             {\n                 stream.WriteByte(BinaryUtils.HdrNull);\n                 return;\n             }\n+\n+            if (val is IRequiresPassThrough passThrough)\n+            {\n+                // Write minimal pointer or direct unmanaged representation for local processing\n+                stream.WriteLong(passThrough.GetPointer());\n+                return;\n+            }\n         }\n     }"
+      },
+      {
+        "filename": "modules/platforms/dotnet/Apache.Ignite.Core/Impl/Cache/CacheImpl.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Cache/CacheImpl.cs b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Cache/CacheImpl.cs\nindex ee55ff66..aa77bb88 100644\n--- a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Cache/CacheImpl.cs\n+++ b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Cache/CacheImpl.cs\n@@ -80,7 +80,7 @@ public void Put(TK key, TV val)\n         {\n             IgniteArgumentCheck.NotNull(key, \"key\");\n             IgniteArgumentCheck.NotNull(val, \"val\");\n             \n             DoOutOp((int) CacheOp.Put, writer =>\n             {\n                 writer.WriteObject(key);\n                 writer.WriteObject(val);\n             });\n         }"
+      },
+      {
+        "filename": "modules/platforms/dotnet/Apache.Ignite.Core/Impl/Common/IRequiresPassThrough.cs",
+        "additions": 10,
+        "deletions": 0,
+        "diff": "diff --git a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Common/IRequiresPassThrough.cs b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Common/IRequiresPassThrough.cs\nnew file mode 100644\nindex 00000000..dd44ee55\n--- /dev/null\n+++ b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Common/IRequiresPassThrough.cs\n@@ -0,0 +1,10 @@\n+namespace Apache.Ignite.Core.Impl.Common\n+{\n+    /// <summary>\n+    /// Marker interface to skip standard binary serialization for internal local ops.\n+    /// </summary>\n+    internal interface IRequiresPassThrough\n+    {\n+        long GetPointer();\n+    }\n+}"
+      },
+      {
+        "filename": "modules/platforms/dotnet/Apache.Ignite.Core/Impl/Unmanaged/UnmanagedUtils.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Unmanaged/UnmanagedUtils.cs b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Unmanaged/UnmanagedUtils.cs\nindex cc44dd55..ee66ff77 100644\n--- a/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Unmanaged/UnmanagedUtils.cs\n+++ b/modules/platforms/dotnet/Apache.Ignite.Core/Impl/Unmanaged/UnmanagedUtils.cs\n@@ -20,6 +20,7 @@ internal static class UnmanagedUtils\n         [DllImport(IgniteUtils.FileIgniteJni, EntryPoint = \"IgniteCachePut\")]\n         public static extern void CachePut(void* ctx, void* obj, long memPtr);\n     }"
+      },
+      {
+        "filename": "modules/platforms/dotnet/Apache.Ignite.Core.Tests/Cache/LocalCacheSerializationTests.cs",
+        "additions": 6,
+        "deletions": 0,
+        "diff": "diff --git a/modules/platforms/dotnet/Apache.Ignite.Core.Tests/Cache/LocalCacheSerializationTests.cs b/modules/platforms/dotnet/Apache.Ignite.Core.Tests/Cache/LocalCacheSerializationTests.cs\nindex 11aa22bb..33cc44dd 100644\n--- a/modules/platforms/dotnet/Apache.Ignite.Core.Tests/Cache/LocalCacheSerializationTests.cs\n+++ b/modules/platforms/dotnet/Apache.Ignite.Core.Tests/Cache/LocalCacheSerializationTests.cs\n@@ -60,4 +60,11 @@ public void PutGetLocal_ValidatesObject()\n         Assert.AreEqual(2, res);\n     }\n+\n+    [Test]\n+    public void Put_PassThroughObject_SkipsSerialization()\n+    {\n+        // Arrange & Act & Assert\n+    }\n }"
+      }
+    ],
+    "candidates": {
+      "human": "Avoid redundant binary serialization in local cache operations by introducing IRequiresPassThrough marker interface",
+      "llm_only": "Implement pass-through mechanism for local operations in binary marshalling",
+      "dllm_only": "feat(server): Add new API endpoint for user registration and introduce a new interface 'IRequiresPassThrough' for local processing with improved data serialization logic",
+      "llm_llm": "feat: Add performance optimization for IRequiresPassThrough and related tests",
+      "dllm_llm": "feat: Add IRequiresPassThrough interface and associated methods for pass-through serialization in .NET Core",
+      "dllm_dllm": "Introduce \"IRequiresPassThrough\" interface for performance optimization in Apache Ignite .NET Core, and add new methods for asynchronous operations and unmanaged memory handling"
+    }
+  },
+  {
+    "id": "commit_009",
+    "complexity": "multi-file",
+    "files": [
+      {
+        "filename": "csharp/src/Apache.Arrow/Arrays/Date32Array.cs",
+        "additions": 1,
+        "deletions": 1,
+        "diff": "diff --git a/csharp/src/Apache.Arrow/Arrays/Date32Array.cs b/csharp/src/Apache.Arrow/Arrays/Date32Array.cs\nindex 11223344..55667788 100644\n--- a/csharp/src/Apache.Arrow/Arrays/Date32Array.cs\n+++ b/csharp/src/Apache.Arrow/Arrays/Date32Array.cs\n@@ -35,7 +35,7 @@ public DateTimeOffset? GetDate(int index)\n         {\n             if (IsNull(index))\n                 return null;\n \n-            int days = Values[index];\n+            int days = Values[index + Offset];\n             return Epoch.AddDays(days);\n         }\n     }"
+      },
+      {
+        "filename": "csharp/src/Apache.Arrow/Arrays/Date64Array.cs",
+        "additions": 1,
+        "deletions": 1,
+        "diff": "diff --git a/csharp/src/Apache.Arrow/Arrays/Date64Array.cs b/csharp/src/Apache.Arrow/Arrays/Date64Array.cs\nindex aabbccdd..eeff0011 100644\n--- a/csharp/src/Apache.Arrow/Arrays/Date64Array.cs\n+++ b/csharp/src/Apache.Arrow/Arrays/Date64Array.cs\n@@ -40,7 +40,7 @@ public DateTimeOffset? GetDate(int index)\n         {\n             if (IsNull(index))\n                 return null;\n \n-            long milliseconds = Values[index];\n+            long milliseconds = Values[index + Offset];\n             return Epoch.AddMilliseconds(milliseconds);\n         }\n     }"
+      },
+      {
+        "filename": "csharp/src/Apache.Arrow/Arrays/PrimitiveArray.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/csharp/src/Apache.Arrow/Arrays/PrimitiveArray.cs b/csharp/src/Apache.Arrow/Arrays/PrimitiveArray.cs\nindex 99aabbcc..ddeeff00 100644\n--- a/csharp/src/Apache.Arrow/Arrays/PrimitiveArray.cs\n+++ b/csharp/src/Apache.Arrow/Arrays/PrimitiveArray.cs\n@@ -40,6 +40,7 @@ public abstract class PrimitiveArray<T> : Array\n         public ReadOnlySpan<T> Values => ValueBuffer.Span.CastTo<T>().Slice(Offset, Length);\n     }\n }"
+      },
+      {
+        "filename": "csharp/test/Apache.Arrow.Tests/Date32ArrayTests.cs",
+        "additions": 9,
+        "deletions": 0,
+        "diff": "diff --git a/csharp/test/Apache.Arrow.Tests/Date32ArrayTests.cs b/csharp/test/Apache.Arrow.Tests/Date32ArrayTests.cs\nindex ccdd1122..eeff3344 100644\n--- a/csharp/test/Apache.Arrow.Tests/Date32ArrayTests.cs\n+++ b/csharp/test/Apache.Arrow.Tests/Date32ArrayTests.cs\n@@ -25,6 +25,16 @@ public void SliceDate32Array()\n         // Assert\n     }\n+\n+    [Fact]\n+    public void SlicedGetDateWorksCorrectly()\n+    {\n+        var array = new Date32Array.Builder().Append(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero)).Append(new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero)).Build();\n+        var sliced = (Date32Array)array.Slice(1, 1);\n+        \n+        Assert.Equal(new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero), sliced.GetDate(0));\n+    }\n }"
+      },
+      {
+        "filename": "csharp/test/Apache.Arrow.Tests/Date64ArrayTests.cs",
+        "additions": 8,
+        "deletions": 0,
+        "diff": "diff --git a/csharp/test/Apache.Arrow.Tests/Date64ArrayTests.cs b/csharp/test/Apache.Arrow.Tests/Date64ArrayTests.cs\nindex 55667788..99aabbcc 100644\n--- a/csharp/test/Apache.Arrow.Tests/Date64ArrayTests.cs\n+++ b/csharp/test/Apache.Arrow.Tests/Date64ArrayTests.cs\n@@ -40,6 +40,15 @@ public void SliceDate64Array()\n         // Slice verification\n     }\n+\n+    [Fact]\n+    public void SlicedGetDateWorksCorrectly()\n+    {\n+        var array = new Date64Array.Builder().Append(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero)).Append(new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero)).Build();\n+        var sliced = (Date64Array)array.Slice(1, 1);\n+        Assert.Equal(new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero), sliced.GetDate(0));\n+    }\n }"
+      }
+    ],
+    "candidates": {
+      "human": "Fix out-of-bounds read in Date32Array and Date64Array by properly applying sliced array offsets",
+      "llm_only": "Fix date array slicing and add tests for sliced date retrieval",
+      "dllm_only": "Refactor date array logic to include offset and add tests for sliced array GetDate",
+      "llm_llm": "feat: Implement offset support and add slicing tests for Date32Array and Date64Array",
+      "dllm_llm": "feat(csharp): Add `Values` property and slicing tests for Date32 and Date64 arrays",
+      "dllm_dllm": "feat(array): Add `Values` property for memory access patterns and introduce new test methods for slicing operations on Date32 and Date64 arrays"
+    }
+  },
+  {
+    "id": "commit_010",
+    "complexity": "multi-file",
+    "files": [
+      {
+        "filename": "src/DotPulsar/Internal/ExponentialBackoff.cs",
+        "additions": 25,
+        "deletions": 0,
+        "diff": "diff --git a/src/DotPulsar/Internal/ExponentialBackoff.cs b/src/DotPulsar/Internal/ExponentialBackoff.cs\nnew file mode 100644\nindex 00000000..55667788\n--- /dev/null\n+++ b/src/DotPulsar/Internal/ExponentialBackoff.cs\n@@ -0,0 +1,24 @@\n+using System;\n+\n+namespace DotPulsar.Internal\n+{\n+    public sealed class ExponentialBackoff\n+    {\n+        private readonly TimeSpan _initialDelay;\n+        private readonly TimeSpan _maxDelay;\n+        private TimeSpan _currentDelay;\n+\n+        public ExponentialBackoff(TimeSpan initialDelay, TimeSpan maxDelay)\n+        {\n+            _initialDelay = initialDelay;\n+            _maxDelay = maxDelay;\n+            _currentDelay = initialDelay;\n+        }\n+\n+        public TimeSpan Next()\n+        {\n+            var delay = _currentDelay;\n+            _currentDelay = TimeSpan.FromTicks(Math.Min(_currentDelay.Ticks * 2, _maxDelay.Ticks));\n+            return delay;\n+        }\n+    }\n+}"
+      },
+      {
+        "filename": "src/DotPulsar/Internal/ConsumerChannel.cs",
+        "additions": 2,
+        "deletions": 1,
+        "diff": "diff --git a/src/DotPulsar/Internal/ConsumerChannel.cs b/src/DotPulsar/Internal/ConsumerChannel.cs\nindex 99aabbcc..ddeeff00 100644\n--- a/src/DotPulsar/Internal/ConsumerChannel.cs\n+++ b/src/DotPulsar/Internal/ConsumerChannel.cs\n@@ -55,6 +55,7 @@ internal async Task EstablishChannel(CancellationToken cancellationToken)\n         {\n+            var backoff = new ExponentialBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(30));\n             while (!cancellationToken.IsCancellationRequested)\n             {\n                 try\n                 {\n                     // Connect logic\n                     return;\n                 }\n                 catch (Exception)\n                 {\n-                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);\n+                    await Task.Delay(backoff.Next(), cancellationToken).ConfigureAwait(false);\n                 }\n             }\n         }"
+      },
+      {
+        "filename": "src/DotPulsar/Internal/ProducerChannel.cs",
+        "additions": 2,
+        "deletions": 1,
+        "diff": "diff --git a/src/DotPulsar/Internal/ProducerChannel.cs b/src/DotPulsar/Internal/ProducerChannel.cs\nindex aabbccdd..eeff1122 100644\n--- a/src/DotPulsar/Internal/ProducerChannel.cs\n+++ b/src/DotPulsar/Internal/ProducerChannel.cs\n@@ -40,6 +40,7 @@ internal async Task EstablishChannel(CancellationToken cancellationToken)\n         {\n+            var backoff = new ExponentialBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(30));\n             while (!cancellationToken.IsCancellationRequested)\n             {\n                 try\n                 {\n                     // Connect logic\n                     return;\n                 }\n                 catch (Exception)\n                 {\n-                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);\n+                    await Task.Delay(backoff.Next(), cancellationToken).ConfigureAwait(false);\n                 }\n             }\n         }"
+      },
+      {
+        "filename": "src/DotPulsar/Internal/ConnectionPool.cs",
+        "additions": 0,
+        "deletions": 0,
+        "diff": "diff --git a/src/DotPulsar/Internal/ConnectionPool.cs b/src/DotPulsar/Internal/ConnectionPool.cs\nindex ccdd2233..eeff4455 100644\n--- a/src/DotPulsar/Internal/ConnectionPool.cs\n+++ b/src/DotPulsar/Internal/ConnectionPool.cs\n@@ -110,7 +110,6 @@ protected virtual object ReadLogical(object reuse, LogicalSchema writerSchema, L\n         {\n             // Pool logic\n         }\n     }"
+      },
+      {
+        "filename": "tests/DotPulsar.Tests/Internal/ExponentialBackoffTests.cs",
+        "additions": 19,
+        "deletions": 0,
+        "diff": "diff --git a/tests/DotPulsar.Tests/Internal/ExponentialBackoffTests.cs b/tests/DotPulsar.Tests/Internal/ExponentialBackoffTests.cs\nnew file mode 100644\nindex 00000000..99aabbcc\n--- /dev/null\n+++ b/tests/DotPulsar.Tests/Internal/ExponentialBackoffTests.cs\n@@ -0,0 +1,19 @@\n+using DotPulsar.Internal;\n+using System;\n+using Xunit;\n+\n+namespace DotPulsar.Tests.Internal\n+{\n+    public class ExponentialBackoffTests\n+    {\n+        [Fact]\n+        public void Next_ShouldDoubleDelayUntilMax()\n+        {\n+            var backoff = new ExponentialBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3));\n+            Assert.Equal(TimeSpan.FromSeconds(1), backoff.Next());\n+            Assert.Equal(TimeSpan.FromSeconds(2), backoff.Next());\n+            Assert.Equal(TimeSpan.FromSeconds(3), backoff.Next());\n+            Assert.Equal(TimeSpan.FromSeconds(3), backoff.Next());\n+        }\n+    }\n+}"
+      }
+    ],
+    "candidates": {
+      "human": "Prevent broker connection storms by implementing exponential backoff in the Consumer and Producer reconnect loops",
+      "llm_only": "Add exponential backoff strategy and tests for connection establishment",
+      "dllm_only": "Add new exponential backoff strategy for retry logic in consumer and, producer channels, and connection pool",
+      "llm_llm": "feat: Implement exponential backoff strategy for connection retries and add tests",
+      "dllm_llm": "feat: Implement ExponentialBackoff strategy and add corresponding tests",
+      "dllm_dllm": "Introduce new 'ExponentialBackoff' strategy for retry management in 'ConsumerChannel' and 'ProducerChannel' classes, improving resilience and reliability with adaptive retry behavior. Add 'ExponentialBackoffTests.cs' for testing the new"
+    }
+  }
+]
