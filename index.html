@@ -867,9 +867,17 @@ function initWelcome() {
 }
 
 function handleStart() {
+  let pid = document.getElementById('inp-pid').value.trim();
+
+  // --- ADDED FOR TESTING: Auto-fill dropdowns if testAlex123 is used ---
+  if (pid === 'testAlex123') {
+    if (!document.getElementById('inp-years').value) document.getElementById('inp-years').value = "10+";
+    if (!document.getElementById('inp-lang').value) document.getElementById('inp-lang').value = "Other";
+  }
+  // ---------------------------------------------------------------------
+
   const years = document.getElementById('inp-years').value;
   const lang  = document.getElementById('inp-lang').value;
-  const pid   = document.getElementById('inp-pid').value.trim();
 
   if (!years) { showToast('⚠ Please select years of experience'); return; }
   if (!lang)  { showToast('⚠ Please select your primary language'); return; }
@@ -1262,6 +1270,19 @@ function handleNext() {
   const candKeys = state.candidateOrders[commit.id];
   const candKey = candKeys[state.candidateIdx];
   const rk = ratingKey(commit.id, candKey);
+
+  // --- ADDED FOR TESTING: Auto-fill if ID is testAlex123 ---
+  if (state.participantId === 'testAlex123') {
+    if (!state.currentRatings[rk]) state.currentRatings[rk] = {};
+    DIMENSIONS.forEach(d => {
+      state.currentRatings[rk][d] = 3;
+      // Visually update the radio buttons
+      const rb = document.getElementById(`lik-${d}-3`);
+      if (rb) rb.checked = true;
+    });
+    document.getElementById('ta-comment').value = 'AUTO';
+  }
+  // ---------------------------------------------------------
 
   // Save comment
   if (!state.currentRatings[rk]) state.currentRatings[rk] = {};
