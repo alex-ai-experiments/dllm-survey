@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Commit Message Evaluation Tool</title>
 
-  <!-- diff2html -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/diff2html/3.4.47/bundles/css/diff2html.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/diff2html/3.4.47/bundles/js/diff2html-ui.min.js"></script>
+  <!-- custom diff renderer (no external dependency) -->
 
   <!-- Google Font: JetBrains Mono + Sora -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -279,22 +277,75 @@
 
     .diff-scroll { overflow: auto; flex: 1; padding: 0; }
 
-    /* Override diff2html styles for dark theme */
-    .diff-scroll .d2h-wrapper { font-family: var(--font-code) !important; }
-    .diff-scroll .d2h-file-header { background: var(--bg-elevated) !important; border-color: var(--border) !important; padding: 8px 16px !important; }
-    .diff-scroll .d2h-file-name { color: var(--text-primary) !important; }
-    .diff-scroll .d2h-code-line { font-size: 12px !important; }
-    .diff-scroll .d2h-code-wrapper { background: var(--bg-base) !important; }
-    .diff-scroll .line-num1, .diff-scroll .line-num2 { background: var(--bg-elevated) !important; color: var(--text-muted) !important; border-color: var(--border-subtle) !important; }
-    .diff-scroll .d2h-ins { background: rgba(63,185,80,0.08) !important; }
-    .diff-scroll .d2h-del { background: rgba(248,81,73,0.08) !important; }
-    .diff-scroll .d2h-ins .d2h-code-line-ctn { background: rgba(63,185,80,0.12) !important; }
-    .diff-scroll .d2h-del .d2h-code-line-ctn { background: rgba(248,81,73,0.12) !important; }
-    .diff-scroll .d2h-file-diff { border-color: var(--border) !important; }
-    .diff-scroll .d2h-file-wrapper { border: 1px solid var(--border) !important; margin: 16px; border-radius: var(--radius) !important; overflow: hidden; }
-    .diff-scroll td { color: var(--text-primary) !important; }
-    .diff-scroll .d2h-diff-tbody td { border-color: var(--border-subtle) !important; }
-    .diff-scroll .d2h-code-linenumber { border-color: var(--border-subtle) !important; }
+    /* ─── Custom diff renderer — GitHub dark style ─────────────── */
+    .diff-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin: 14px 16px;
+      font-family: var(--font-code);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .diff-file-header {
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border);
+      padding: 7px 14px;
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .diff-file-header .diff-fname {
+      color: var(--text-primary); font-weight: 600; font-size: 12px;
+    }
+    .diff-file-header .diff-index {
+      color: var(--text-muted); font-size: 10.5px;
+    }
+    .diff-table { width: 100%; border-collapse: collapse; }
+    .diff-table td { padding: 0; vertical-align: top; white-space: pre; }
+
+    /* line number cells */
+    .diff-ln {
+      width: 1%; min-width: 44px;
+      padding: 0 12px 0 10px;
+      text-align: right;
+      color: var(--text-muted);
+      background: var(--bg-elevated);
+      border-right: 1px solid var(--border-subtle);
+      user-select: none;
+      font-size: 11px;
+      line-height: 20px;
+    }
+    /* code content cell */
+    .diff-code {
+      padding: 0 16px;
+      width: 100%;
+      line-height: 20px;
+      background: var(--bg-base);
+      color: var(--text-primary);
+    }
+
+    /* row types */
+    .diff-row-add .diff-ln  { background: #0d2a1a; color: #3fb950; border-color: #1a3a26; }
+    .diff-row-add .diff-code { background: #0d2a1a; color: var(--text-primary); }
+    .diff-row-add .diff-sign { color: #3fb950; }
+
+    .diff-row-del .diff-ln  { background: #2a0d0d; color: #f85149; border-color: #3a1a1a; }
+    .diff-row-del .diff-code { background: #2a0d0d; color: var(--text-primary); }
+    .diff-row-del .diff-sign { color: #f85149; }
+
+    .diff-row-hunk .diff-ln  { background: #0c1f38; color: #388bfd; border-color: #162d4a; }
+    .diff-row-hunk .diff-code { background: #0c1f38; color: #388bfd; font-style: normal; }
+
+    .diff-row-ctx .diff-ln  { background: var(--bg-elevated); }
+    .diff-row-ctx .diff-code { background: var(--bg-base); }
+
+    /* inline char-level highlights */
+    .diff-hi-add { background: rgba(63,185,80,0.28); border-radius: 2px; }
+    .diff-hi-del { background: rgba(248,81,73,0.28); border-radius: 2px; }
+
+    .diff-sign { display: inline-block; width: 14px; user-select: none; }
+    .diff-empty { color: var(--text-muted); font-style: italic; padding: 10px 16px; font-size: 11.5px; }
 
     /* ─── Right / Form Panel ─────────────────────────────────────── */
     .form-panel {
@@ -959,10 +1010,7 @@ function renderCurrentPosition() {
 
   // Progress
   const totalEvals = state.commits.reduce((sum, c) => sum + Object.keys(c.candidates).length, 0);
-  const doneEvals  = state.results.length + Object.keys(state.currentRatings).filter(k => {
-    const r = state.currentRatings[k];
-    return r && DIMENSIONS.every(d => r[d]);
-  }).length;
+  const doneEvals  = state.results.length;
   const pct = Math.min(100, Math.round((doneEvals / totalEvals) * 100));
   document.getElementById('progress-fill').style.width = pct + '%';
   document.getElementById('progress-label').textContent = `${doneEvals} / ${totalEvals}`;
@@ -1056,29 +1104,153 @@ function renderDiff(commit) {
   renderFileDiff(commit.files[0]);
 }
 
+// ─── Custom diff renderer ────────────────────────────────────────
+function esc(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Compute char-level diff between two strings (LCS-based)
+function charDiff(oldStr, newStr) {
+  // Returns [{text, type}] where type is 'eq'|'ins'|'del'
+  const a = oldStr.split(''), b = newStr.split('');
+  const m = a.length, n = b.length;
+  // Build LCS table (limit to 300 chars each to avoid perf issues)
+  const A = a.slice(0, 300), B = b.slice(0, 300);
+  const M = A.length, N = B.length;
+  const dp = Array.from({length: M+1}, () => new Int16Array(N+1));
+  for (let i = M-1; i >= 0; i--)
+    for (let j = N-1; j >= 0; j--)
+      dp[i][j] = A[i]===B[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  const result = [];
+  let i=0, j=0;
+  while (i<M || j<N) {
+    if (i<M && j<N && A[i]===B[j]) { result.push({t:A[i],k:'eq'}); i++; j++; }
+    else if (j<N && (i>=M || dp[i][j+1]>=dp[i+1][j])) { result.push({t:B[j],k:'ins'}); j++; }
+    else { result.push({t:A[i],k:'del'}); i++; }
+  }
+  // Append any truncated tail as-is
+  if (a.length > 300) result.push({t: a.slice(300).join(''), k:'del'});
+  if (b.length > 300) result.push({t: b.slice(300).join(''), k:'ins'});
+  return result;
+}
+
+function renderInlineDiff(oldLine, newLine) {
+  // Returns [markedOldHTML, markedNewHTML]
+  const ops = charDiff(oldLine, newLine);
+  let oldHTML = '', newHTML = '';
+  let delBuf = '', insBuf = '';
+  function flushDel() { if (delBuf) { oldHTML += `<span class="diff-hi-del">${esc(delBuf)}</span>`; delBuf=''; } }
+  function flushIns() { if (insBuf) { newHTML += `<span class="diff-hi-add">${esc(insBuf)}</span>`; insBuf=''; } }
+  for (const op of ops) {
+    if (op.k==='eq')  { flushDel(); flushIns(); oldHTML+=esc(op.t); newHTML+=esc(op.t); }
+    else if(op.k==='del') { flushIns(); delBuf+=op.t; }
+    else               { flushDel(); insBuf+=op.t; }
+  }
+  flushDel(); flushIns();
+  return [oldHTML, newHTML];
+}
+
 function renderFileDiff(file) {
   const container = document.getElementById('diff-container');
   container.innerHTML = '';
-  const targetEl = document.createElement('div');
-  container.appendChild(targetEl);
 
-  try {
-    const ui = new Diff2HtmlUI(targetEl, file.diff, {
-      drawFileList: false,
-      matching: 'lines',
-      outputFormat: 'line-by-line',
-      highlight: true,
-      renderNothingWhenEmpty: false,
-    });
-    ui.draw();
-    ui.highlightCode();
-  } catch(e) {
-    // fallback: plain text
-    const pre = document.createElement('pre');
-    pre.style.cssText = 'padding:16px;font-family:var(--font-code);font-size:12px;color:var(--text-secondary);white-space:pre-wrap;';
-    pre.textContent = file.diff;
-    container.appendChild(pre);
+  const raw = file.diff || '';
+  if (!raw.trim()) {
+    const d = document.createElement('div');
+    d.className = 'diff-file';
+    d.innerHTML = `<div class="diff-file-header"><span class="diff-fname">${esc(file.filename)}</span></div>
+      <div class="diff-empty">No changes in this file (context only)</div>`;
+    container.appendChild(d);
+    return;
   }
+
+  // Split into lines
+  const lines = raw.split('\n');
+
+  // Parse header lines (diff --git, index, --- , +++)
+  let indexLine = '';
+  let bodyStart = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.startsWith('index ')) { indexLine = l.replace('index ',''); bodyStart = i+1; }
+    if (l.startsWith('--- ') || l.startsWith('+++ ')) bodyStart = i+1;
+    if (l.startsWith('@@')) { bodyStart = i; break; }
+  }
+
+  // Collect all hunk lines from bodyStart onward
+  const hunkLines = lines.slice(bodyStart);
+
+  // Build rows — first pass: collect add/del pairs for inline diff
+  // We do a two-pass: gather rows as objects, then pair consecutive del+add for inline highlights
+  const rows = [];
+  let oldN = 0, newN = 0;
+
+  for (const line of hunkLines) {
+    if (line === '' && rows.length && rows[rows.length-1]?.type === 'eof') continue;
+    if (line.startsWith('@@')) {
+      // Parse @@ -a,b +c,d @@ optional heading
+      const m = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)/);
+      if (m) { oldN = parseInt(m[1]); newN = parseInt(m[2]); }
+      rows.push({ type:'hunk', text: line });
+    } else if (line.startsWith('+')) {
+      rows.push({ type:'add', oldN: null, newN: newN++, text: line.slice(1) });
+    } else if (line.startsWith('-')) {
+      rows.push({ type:'del', oldN: oldN++, newN: null, text: line.slice(1) });
+    } else if (line.startsWith('\\')) {
+      // "\ No newline at end of file" — skip silently
+    } else {
+      const txt = line.startsWith(' ') ? line.slice(1) : line;
+      rows.push({ type:'ctx', oldN: oldN++, newN: newN++, text: txt });
+    }
+  }
+
+  // Second pass: find del rows immediately followed by an add row
+  // and compute inline char-level diffs for those pairs
+  for (let i = 0; i < rows.length - 1; i++) {
+    if (rows[i].type === 'del' && rows[i+1].type === 'add') {
+      const [oldHL, newHL] = renderInlineDiff(rows[i].text, rows[i+1].text);
+      rows[i].html   = oldHL;
+      rows[i+1].html = newHL;
+      i++; // skip the paired add row
+    }
+  }
+
+  // Build HTML table
+  let tableHTML = '<table class="diff-table">';
+  for (const row of rows) {
+    if (row.type === 'hunk') {
+      tableHTML += `<tr class="diff-row-hunk">
+        <td class="diff-ln"></td>
+        <td class="diff-ln"></td>
+        <td class="diff-code">${esc(row.text)}</td></tr>`;
+    } else if (row.type === 'add') {
+      const codeHTML = row.html || esc(row.text);
+      tableHTML += `<tr class="diff-row-add">
+        <td class="diff-ln"></td>
+        <td class="diff-ln">${row.newN}</td>
+        <td class="diff-code"><span class="diff-sign">+</span>${codeHTML}</td></tr>`;
+    } else if (row.type === 'del') {
+      const codeHTML = row.html || esc(row.text);
+      tableHTML += `<tr class="diff-row-del">
+        <td class="diff-ln">${row.oldN}</td>
+        <td class="diff-ln"></td>
+        <td class="diff-code"><span class="diff-sign">-</span>${codeHTML}</td></tr>`;
+    } else {
+      tableHTML += `<tr class="diff-row-ctx">
+        <td class="diff-ln">${row.oldN}</td>
+        <td class="diff-ln">${row.newN}</td>
+        <td class="diff-code"><span class="diff-sign"> </span>${esc(row.text)}</td></tr>`;
+    }
+  }
+  tableHTML += '</table>';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'diff-file';
+  wrap.innerHTML = `<div class="diff-file-header">
+    <span class="diff-fname">${esc(file.filename)}</span>
+    ${indexLine ? `<span class="diff-index">${esc(indexLine)}</span>` : ''}
+  </div>${tableHTML}`;
+  container.appendChild(wrap);
 }
 
 // ══════════════════════════════════════════════════════════
