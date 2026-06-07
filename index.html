@@ -99,16 +99,16 @@
       cursor: pointer; transition: all var(--transition);
       text-decoration: none; white-space: nowrap;
     }
-    .btn-primary {
-      background: var(--accent); border-color: var(--accent);
-      color: #fff;
-    }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
     .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
     .btn-ghost { background: transparent; color: var(--text-secondary); }
     .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
     .btn-danger { background: transparent; border-color: var(--red); color: var(--red); }
     .btn-danger:hover { background: var(--red-bg); }
+    
+    .btn-success { background: transparent; border-color: var(--green); color: var(--green); }
+    .btn-success:hover { background: var(--green-bg); }
 
     /* ─── Inputs ─────────────────────────────────────────────────── */
     input[type="text"], input[type="number"], select, textarea {
@@ -304,7 +304,6 @@
     .diff-table { width: 100%; border-collapse: collapse; }
     .diff-table td { padding: 0; vertical-align: top; white-space: pre; }
 
-    /* line number cells */
     .diff-ln {
       width: 1%; min-width: 44px;
       padding: 0 12px 0 10px;
@@ -316,7 +315,6 @@
       font-size: 11px;
       line-height: 20px;
     }
-    /* code content cell */
     .diff-code {
       padding: 0 16px;
       width: 100%;
@@ -325,7 +323,6 @@
       color: var(--text-primary);
     }
 
-    /* row types */
     .diff-row-add .diff-ln  { background: #0d2a1a; color: #3fb950; border-color: #1a3a26; }
     .diff-row-add .diff-code { background: #0d2a1a; color: var(--text-primary); }
     .diff-row-add .diff-sign { color: #3fb950; }
@@ -340,7 +337,6 @@
     .diff-row-ctx .diff-ln  { background: var(--bg-elevated); }
     .diff-row-ctx .diff-code { background: var(--bg-base); }
 
-    /* inline char-level highlights */
     .diff-hi-add { background: rgba(63,185,80,0.28); border-radius: 2px; }
     .diff-hi-del { background: rgba(248,81,73,0.28); border-radius: 2px; }
 
@@ -456,12 +452,14 @@
     .commit-step.done { background: var(--green); border-color: var(--green); }
     .commit-step.active { background: var(--accent); border-color: var(--accent); }
 
-    /* ─── Summary Screen ─────────────────────────────────────────── */
-    #screen-summary {
+    /* ─── Checkpoint & Summary Screens ───────────────────────────── */
+    #screen-summary, #screen-checkpoint {
       display: flex; align-items: center; justify-content: center;
       min-height: 100vh; padding: 24px;
-      background: radial-gradient(ellipse 80% 60% at 50% 110%, rgba(63,185,80,0.06) 0%, transparent 60%);
     }
+    #screen-summary { background: radial-gradient(ellipse 80% 60% at 50% 110%, rgba(63,185,80,0.06) 0%, transparent 60%); }
+    #screen-checkpoint { background: radial-gradient(ellipse 80% 60% at 50% 110%, rgba(210,153,34,0.06) 0%, transparent 60%); }
+    
     .summary-card {
       background: var(--bg-surface);
       border: 1px solid var(--border);
@@ -517,12 +515,6 @@
     }
     .fade-in { animation: fadeInUp 0.3s ease forwards; }
 
-    /* ─── Pulse ─────────────────────────────────────────────────── */
-    @keyframes pulse-glow {
-      0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
-      50%       { box-shadow: 0 0 0 6px transparent; }
-    }
-
     /* ─── Validation state ──────────────────────────────────────── */
     .rating-group.incomplete .rating-label { color: var(--red); }
     .rating-group.incomplete .likert-option label { border-color: rgba(248,81,73,0.4); }
@@ -551,7 +543,7 @@
 
     <h1 class="welcome-title">Commit Message Evaluation Study</h1>
     <p class="welcome-sub">
-      You will evaluate <strong style="color:var(--text-primary)">10 code commits</strong>, each with <strong style="color:var(--text-primary)">6 candidate commit messages</strong>, using the six quality dimensions below. Estimated time: <strong style="color:var(--text-primary)">25–35 minutes</strong>.
+      You will evaluate up to <strong style="color:var(--text-primary)">15 code commits</strong> (minimum 10 required), each with <strong style="color:var(--text-primary)">6 candidate commit messages</strong>, using the six quality dimensions below. Estimated time: <strong style="color:var(--text-primary)">25–45 minutes</strong>.
     </p>
 
     <div class="dimension-list">
@@ -699,10 +691,27 @@
 
       <div class="form-panel-footer">
         <div class="time-badge">⏱ <span id="timer-display">0:00</span></div>
+        <button class="btn btn-success" id="btn-finish-early" style="display:none;">Finish Early ✓</button>
         <button class="btn btn-ghost" id="btn-prev" style="min-width:80px;">← Back</button>
         <button class="btn btn-primary" id="btn-next" style="min-width:120px;">Next →</button>
       </div>
     </section>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCREEN 2.5: CHECKPOINT (Commit 10/15)
+════════════════════════════════════════════════ -->
+<div id="screen-checkpoint" class="screen hidden">
+  <div class="summary-card fade-in">
+    <div class="summary-icon">🏁</div>
+    <h2>Checkpoint Reached!</h2>
+    <p>You have successfully completed the required 10 evaluations. You can choose to end your survey and submit your results now, or optionally continue to evaluate the remaining 5 commits.</p>
+    
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 28px;">
+      <button class="btn btn-primary w-full" id="btn-chk-continue" style="padding:11px 16px;font-size:0.93rem;">Continue (5 remaining) &rarr;</button>
+      <button class="btn btn-ghost w-full" id="btn-chk-end" style="padding:11px 16px;font-size:0.93rem;">Submit & End Survey</button>
+    </div>
   </div>
 </div>
 
@@ -713,7 +722,7 @@
   <div class="summary-card fade-in">
     <div class="summary-icon">🎉</div>
     <h2>Evaluation Complete!</h2>
-    <p>Thank you for completing all evaluations. Your responses are being submitted now.</p>
+    <p>Thank you for completing the evaluations. Your responses are being submitted now.</p>
 
     <div class="summary-stats">
       <div class="stat-box">
@@ -772,6 +781,7 @@ let state = {
   currentRatings: {},    // { commitId_candidateKey: { accuracy, ... } }
   candidateStartTime: Date.now(),
   commitStartTime: Date.now(),
+  choseToContinue: false // Whether user opted to proceed past 10 evaluations
 };
 
 const STORAGE_KEY = 'commiteval_state_v2';
@@ -829,7 +839,7 @@ function ratingKey(commitId, candKey) {
 //  SCREEN MANAGER
 // ══════════════════════════════════════════════════════════
 function showScreen(id) {
-  ['screen-welcome','screen-eval','screen-summary'].forEach(s => {
+  ['screen-welcome','screen-eval','screen-checkpoint','screen-summary'].forEach(s => {
     document.getElementById(s).classList.toggle('hidden', s !== id);
   });
 }
@@ -850,7 +860,7 @@ function initWelcome() {
       state = saved;
       // Skip welcome, jump straight to eval
       loadData().then(() => {
-        state.commits = saved.commits; // data is re-derived, but keep saved
+        state.commits = saved.commits; 
         startEval();
       });
       return;
@@ -864,17 +874,17 @@ function initWelcome() {
   document.getElementById('inp-pid').value = pid;
 
   document.getElementById('btn-start').addEventListener('click', handleStart);
+  document.getElementById('btn-chk-continue').addEventListener('click', handleCheckpointContinue);
+  document.getElementById('btn-chk-end').addEventListener('click', handleCheckpointEnd);
 }
 
 function handleStart() {
   let pid = document.getElementById('inp-pid').value.trim();
 
-  // --- ADDED FOR TESTING: Auto-fill dropdowns if testAlex123 is used ---
   if (pid === 'testAlex123') {
     if (!document.getElementById('inp-years').value) document.getElementById('inp-years').value = "10+";
     if (!document.getElementById('inp-lang').value) document.getElementById('inp-lang').value = "Other";
   }
-  // ---------------------------------------------------------------------
 
   const years = document.getElementById('inp-years').value;
   const lang  = document.getElementById('inp-lang').value;
@@ -888,12 +898,13 @@ function handleStart() {
   state.primaryLang   = lang;
   state.sessionStart  = Date.now();
   state.results       = [];
+  state.choseToContinue = false;
 
   loadData().then(startEval);
 }
 
 // ══════════════════════════════════════════════════════════
-//  DATA LOADING
+//  DATA LOADING & SHUFFLING
 // ══════════════════════════════════════════════════════════
 async function loadData() {
   try {
@@ -905,9 +916,49 @@ async function loadData() {
     throw e;
   }
 
-  // Shuffle commit order (once per participant)
+  // Ensure state flags are initialized
+  if (typeof state.choseToContinue === 'undefined') {
+    state.choseToContinue = false;
+  }
+
+  // Generate Commit Ordering strictly with the 4-2-4 distribution limit setup
   if (!state.commitOrder || state.commitOrder.length !== state.commits.length) {
-    state.commitOrder = shuffle(state.commits.map((_, i) => i));
+    let cat1 = [], cat2 = [], cat3 = [];
+
+    state.commits.forEach((c, i) => {
+      // Determine category (Assuming ID format commit_001 to commit_015)
+      let m = c.id.match(/\d+/);
+      let num = m ? parseInt(m[0], 10) : (i + 1);
+      
+      if (num >= 1 && num <= 5) cat1.push(i);
+      else if (num >= 6 && num <= 10) cat2.push(i);
+      else cat3.push(i);
+    });
+
+    // Check if the source dataset rigidly meets the size expectations (5 per cat).
+    // If not, fall back to a random shuffle avoiding bounds errors.
+    if (cat1.length === 5 && cat2.length === 5 && cat3.length >= 5) {
+      cat1 = shuffle(cat1);
+      cat2 = shuffle(cat2);
+      cat3 = shuffle(cat3);
+
+      // The first 10 commits shown must strictly contain a randomly sampled 4-2-4 distribution 
+      let first10 = [
+        ...cat1.slice(0, 4),
+        ...cat2.slice(0, 2),
+        ...cat3.slice(0, 4)
+      ];
+      // Remaining 5 will be handled securely 
+      let last5 = [
+        ...cat1.slice(4),
+        ...cat2.slice(2),
+        ...cat3.slice(4)
+      ];
+
+      state.commitOrder = [...shuffle(first10), ...shuffle(last5)];
+    } else {
+      state.commitOrder = shuffle(state.commits.map((_, i) => i));
+    }
   }
 
   // Shuffle candidate order per commit (once per participant)
@@ -920,9 +971,15 @@ async function loadData() {
 }
 
 // ══════════════════════════════════════════════════════════
-//  EVAL SCREEN
+//  EVAL SCREEN & RENDERING
 // ══════════════════════════════════════════════════════════
 function startEval() {
+  // Edge case block: if the user resumes via browser refresh while parked at the exact checkpoint gap
+  if (state.commitIdx === 10 && !state.choseToContinue && state.commits.length > 10) {
+    showScreen('screen-checkpoint');
+    return;
+  }
+
   showScreen('screen-eval');
   document.getElementById('uid-display').textContent = state.participantId;
   buildSteppers();
@@ -931,27 +988,30 @@ function startEval() {
 }
 
 function buildSteppers() {
-  // Commit-level stepper
   const el = document.getElementById('commit-stepper');
   el.innerHTML = '';
-  state.commits.forEach((_, i) => {
+  // Maximum dots shown at top depends on user progressing past checkpoint
+  const maxCommits = Math.min(state.choseToContinue ? state.commits.length : 10, state.commits.length);
+  
+  for (let i = 0; i < maxCommits; i++) {
     const step = document.createElement('div');
     step.className = 'commit-step';
     step.id = `step-${i}`;
     el.appendChild(step);
-  });
+  }
 }
 
 function updateSteppers() {
-  const totalCommits = state.commits.length;
-  state.commits.forEach((_, i) => {
+  const maxCommits = Math.min(state.choseToContinue ? state.commits.length : 10, state.commits.length);
+  for (let i = 0; i < maxCommits; i++) {
     const step = document.getElementById(`step-${i}`);
-    if (!step) return;
+    if (!step) continue;
+    
     const ci = state.commitOrder[i];
     const commit = state.commits[ci];
     const done = isCommitDone(commit.id);
     step.className = 'commit-step' + (done ? ' done' : (i === state.commitIdx ? ' active' : ''));
-  });
+  }
 }
 
 function isCommitDone(commitId) {
@@ -1016,14 +1076,22 @@ function renderCurrentPosition() {
   const saved = state.currentRatings[rk] || {};
   document.getElementById('ta-comment').value = saved.comment || '';
 
-  // Progress
-  const totalEvals = state.commits.reduce((sum, c) => sum + Object.keys(c.candidates).length, 0);
+  // Progress logic bounds dynamically adjusting for checkpoint
+  const maxCommits = Math.min(state.choseToContinue ? state.commits.length : 10, state.commits.length);
+  let totalEvals = 0;
+  for (let i = 0; i < maxCommits; i++) {
+    let loopCi = state.commitOrder[i];
+    if (state.commits[loopCi]) {
+      totalEvals += Object.keys(state.commits[loopCi].candidates).length;
+    }
+  }
+  
   const doneEvals  = state.results.length;
   const pct = Math.min(100, Math.round((doneEvals / totalEvals) * 100));
   document.getElementById('progress-fill').style.width = pct + '%';
   document.getElementById('progress-label').textContent = `${doneEvals} / ${totalEvals}`;
 
-  // Prev/next button states
+  // Prev/next/early submit button states
   const isFirst = state.commitIdx === 0 && state.candidateIdx === 0;
   document.getElementById('btn-prev').disabled = isFirst;
   document.getElementById('btn-prev').style.opacity = isFirst ? '0.3' : '1';
@@ -1031,6 +1099,12 @@ function renderCurrentPosition() {
   const isLast = state.commitIdx === state.commits.length - 1 &&
                  state.candidateIdx === candKeys.length - 1;
   document.getElementById('btn-next').textContent = isLast ? 'Finish ✓' : 'Next →';
+
+  if (state.commitIdx >= 10 && state.choseToContinue) {
+    document.getElementById('btn-finish-early').style.display = 'inline-flex';
+  } else {
+    document.getElementById('btn-finish-early').style.display = 'none';
+  }
 
   // Remove validation highlights
   DIMENSIONS.forEach(dim => {
@@ -1117,12 +1191,9 @@ function esc(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// Compute char-level diff between two strings (LCS-based)
 function charDiff(oldStr, newStr) {
-  // Returns [{text, type}] where type is 'eq'|'ins'|'del'
   const a = oldStr.split(''), b = newStr.split('');
   const m = a.length, n = b.length;
-  // Build LCS table (limit to 300 chars each to avoid perf issues)
   const A = a.slice(0, 300), B = b.slice(0, 300);
   const M = A.length, N = B.length;
   const dp = Array.from({length: M+1}, () => new Int16Array(N+1));
@@ -1136,14 +1207,12 @@ function charDiff(oldStr, newStr) {
     else if (j<N && (i>=M || dp[i][j+1]>=dp[i+1][j])) { result.push({t:B[j],k:'ins'}); j++; }
     else { result.push({t:A[i],k:'del'}); i++; }
   }
-  // Append any truncated tail as-is
   if (a.length > 300) result.push({t: a.slice(300).join(''), k:'del'});
   if (b.length > 300) result.push({t: b.slice(300).join(''), k:'ins'});
   return result;
 }
 
 function renderInlineDiff(oldLine, newLine) {
-  // Returns [markedOldHTML, markedNewHTML]
   const ops = charDiff(oldLine, newLine);
   let oldHTML = '', newHTML = '';
   let delBuf = '', insBuf = '';
@@ -1172,10 +1241,7 @@ function renderFileDiff(file) {
     return;
   }
 
-  // Split into lines
   const lines = raw.split('\n');
-
-  // Parse header lines (diff --git, index, --- , +++)
   let indexLine = '';
   let bodyStart = 0;
   for (let i = 0; i < lines.length; i++) {
@@ -1185,18 +1251,13 @@ function renderFileDiff(file) {
     if (l.startsWith('@@')) { bodyStart = i; break; }
   }
 
-  // Collect all hunk lines from bodyStart onward
   const hunkLines = lines.slice(bodyStart);
-
-  // Build rows — first pass: collect add/del pairs for inline diff
-  // We do a two-pass: gather rows as objects, then pair consecutive del+add for inline highlights
   const rows = [];
   let oldN = 0, newN = 0;
 
   for (const line of hunkLines) {
     if (line === '' && rows.length && rows[rows.length-1]?.type === 'eof') continue;
     if (line.startsWith('@@')) {
-      // Parse @@ -a,b +c,d @@ optional heading
       const m = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)/);
       if (m) { oldN = parseInt(m[1]); newN = parseInt(m[2]); }
       rows.push({ type:'hunk', text: line });
@@ -1205,25 +1266,22 @@ function renderFileDiff(file) {
     } else if (line.startsWith('-')) {
       rows.push({ type:'del', oldN: oldN++, newN: null, text: line.slice(1) });
     } else if (line.startsWith('\\')) {
-      // "\ No newline at end of file" — skip silently
+      // ignore
     } else {
       const txt = line.startsWith(' ') ? line.slice(1) : line;
       rows.push({ type:'ctx', oldN: oldN++, newN: newN++, text: txt });
     }
   }
 
-  // Second pass: find del rows immediately followed by an add row
-  // and compute inline char-level diffs for those pairs
   for (let i = 0; i < rows.length - 1; i++) {
     if (rows[i].type === 'del' && rows[i+1].type === 'add') {
       const [oldHL, newHL] = renderInlineDiff(rows[i].text, rows[i+1].text);
       rows[i].html   = oldHL;
       rows[i+1].html = newHL;
-      i++; // skip the paired add row
+      i++; 
     }
   }
 
-  // Build HTML table
   let tableHTML = '<table class="diff-table">';
   for (const row of rows) {
     if (row.type === 'hunk') {
@@ -1262,7 +1320,7 @@ function renderFileDiff(file) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  NAVIGATION
+//  NAVIGATION AND CHECKPOINT BINDINGS
 // ══════════════════════════════════════════════════════════
 function handleNext() {
   const ci      = state.commitOrder[state.commitIdx];
@@ -1271,24 +1329,19 @@ function handleNext() {
   const candKey = candKeys[state.candidateIdx];
   const rk = ratingKey(commit.id, candKey);
 
-  // --- ADDED FOR TESTING: Auto-fill if ID is testAlex123 ---
   if (state.participantId === 'testAlex123') {
     if (!state.currentRatings[rk]) state.currentRatings[rk] = {};
     DIMENSIONS.forEach(d => {
       state.currentRatings[rk][d] = 3;
-      // Visually update the radio buttons
       const rb = document.getElementById(`lik-${d}-3`);
       if (rb) rb.checked = true;
     });
     document.getElementById('ta-comment').value = 'AUTO';
   }
-  // ---------------------------------------------------------
 
-  // Save comment
   if (!state.currentRatings[rk]) state.currentRatings[rk] = {};
   state.currentRatings[rk].comment = document.getElementById('ta-comment').value.trim();
 
-  // Validate all 6 dims are rated
   const missing = DIMENSIONS.filter(d => !state.currentRatings[rk] || !state.currentRatings[rk][d]);
   if (missing.length) {
     missing.forEach(d => document.getElementById(`rg-${d}`).classList.add('incomplete'));
@@ -1297,11 +1350,9 @@ function handleNext() {
     return;
   }
 
-  // Record time spent on this candidate
   const timeSpent = Math.floor((Date.now() - timerStart) / 1000);
   state.currentRatings[rk].timeSpent = timeSpent;
 
-  // Commit this evaluation to results
   const r = state.currentRatings[rk];
   state.results.push({
     participantId:    state.participantId,
@@ -1321,7 +1372,6 @@ function handleNext() {
 
   saveState();
 
-  // Advance
   const isLastCandidate = state.candidateIdx === candKeys.length - 1;
   const isLastCommit    = state.commitIdx    === state.commits.length - 1;
 
@@ -1334,6 +1384,13 @@ function handleNext() {
   if (isLastCandidate) {
     state.commitIdx++;
     state.candidateIdx = 0;
+    
+    // Checkpoint Trigger exactly when hitting the barrier of evaluating 10 commits
+    if (state.commitIdx === 10 && !state.choseToContinue && state.commits.length > 10) {
+      showScreen('screen-checkpoint');
+      clearInterval(timerInterval);
+      return; 
+    }
   } else {
     state.candidateIdx++;
   }
@@ -1351,7 +1408,6 @@ function handlePrev() {
   const candKey = candKeys[state.candidateIdx];
   const rk = ratingKey(commit.id, candKey);
 
-  // Save partial state of current form
   if (!state.currentRatings[rk]) state.currentRatings[rk] = {};
   state.currentRatings[rk].comment = document.getElementById('ta-comment').value.trim();
   DIMENSIONS.forEach(d => {
@@ -1359,7 +1415,6 @@ function handlePrev() {
     if (checked) state.currentRatings[rk][d] = parseInt(checked.value);
   });
 
-  // Remove from results if it was already submitted
   const prevResultIdx = state.results.findIndex(r =>
     r.commitId === commit.id && r.condition === candKey
   );
@@ -1378,13 +1433,42 @@ function handlePrev() {
   renderCurrentPosition();
 }
 
+function handleCheckpointContinue() {
+  state.choseToContinue = true;
+  saveState();
+  showScreen('screen-eval');
+  buildSteppers();
+  startTimers();
+  timerStart = Date.now();
+  renderCurrentPosition();
+}
+
+function handleCheckpointEnd() {
+  showSummary();
+}
+
+// Button bound to trigger manual early exit > 10 commits
+document.getElementById('btn-finish-early').addEventListener('click', () => {
+  if (confirm('Are you sure you want to end the survey early? Any completely evaluated candidates up to this point will be submitted.')) {
+    clearInterval(timerInterval);
+    showSummary();
+  }
+});
+
+
 // ══════════════════════════════════════════════════════════
 //  SUMMARY & SUBMISSION
 // ══════════════════════════════════════════════════════════
 function showSummary() {
   showScreen('screen-summary');
 
-  document.getElementById('stat-commits').textContent = state.commits.length;
+  // Calculates how many commits have been fully evaluated based on having completed all their candidates
+  let fullyCompleted = 0;
+  state.commits.forEach(c => {
+    if (isCommitDone(c.id)) fullyCompleted++;
+  });
+
+  document.getElementById('stat-commits').textContent = fullyCompleted;
   document.getElementById('stat-evals').textContent   = state.results.length;
   const totalMs = Date.now() - state.sessionStart;
   document.getElementById('stat-time').textContent    = formatDuration(totalMs);
@@ -1434,7 +1518,6 @@ async function submitResults() {
 document.addEventListener('DOMContentLoaded', () => {
   initWelcome();
 
-  document.getElementById('btn-start').addEventListener('click', handleStart);
   document.getElementById('btn-next').addEventListener('click', handleNext);
   document.getElementById('btn-prev').addEventListener('click', handlePrev);
 
