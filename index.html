@@ -921,45 +921,37 @@ async function loadData() {
     state.choseToContinue = false;
   }
 
-  // Generate Commit Ordering strictly with the 4-2-4 distribution limit setup
-  if (!state.commitOrder || state.commitOrder.length !== state.commits.length) {
-    let cat1 = [], cat2 = [], cat3 = [];
+  // Generate Commit Ordering using a specific fixed base of 10 commits
+    if (!state.commitOrder || state.commitOrder.length !== state.commits.length) {
+      let first10 = [];
+      let last5 = [];
 
-    state.commits.forEach((c, i) => {
-      // Determine category (Assuming ID format commit_001 to commit_015)
-      let m = c.id.match(/\d+/);
-      let num = m ? parseInt(m[0], 10) : (i + 1);
-      
-      if (num >= 1 && num <= 5) cat1.push(i);
-      else if (num >= 6 && num <= 10) cat2.push(i);
-      else cat3.push(i);
-    });
+      state.commits.forEach((c, i) => {
+        // Parse the number from 'commit_001', 'commit_015', etc.
+        let m = c.id.match(/\d+/);
+        let num = m ? parseInt(m[0], 10) : (i + 1);
+        
+        // The fixed set of 10 commits everyone must do:
+        // 1-4 (Cat 1), 6-7 (Cat 2), 11-14 (Cat 3)
+        const isBaseCommit = [1, 2, 3, 4, 6, 7, 11, 12, 13, 14].includes(num);
+        
+        if (isBaseCommit) {
+          first10.push(i);
+        } else {
+          last5.push(i);
+        }
+      });
 
-    // Check if the source dataset rigidly meets the size expectations (5 per cat).
-    // If not, fall back to a random shuffle avoiding bounds errors.
-    if (cat1.length === 5 && cat2.length === 5 && cat3.length >= 5) {
-      cat1 = shuffle(cat1);
-      cat2 = shuffle(cat2);
-      cat3 = shuffle(cat3);
-
-      // The first 10 commits shown must strictly contain a randomly sampled 4-2-4 distribution 
-      let first10 = [
-        ...cat1.slice(0, 4),
-        ...cat2.slice(0, 2),
-        ...cat3.slice(0, 4)
-      ];
-      // Remaining 5 will be handled securely 
-      let last5 = [
-        ...cat1.slice(4),
-        ...cat2.slice(2),
-        ...cat3.slice(4)
-      ];
-
-      state.commitOrder = [...shuffle(first10), ...shuffle(last5)];
-    } else {
-      state.commitOrder = shuffle(state.commits.map((_, i) => i));
+      if (first10.length === 10) {
+        // The specific 10 commits are selected, but we still shuffle their 
+        // presentation order to prevent survey fatigue/ordering bias. 
+        // (Remove 'shuffle()' around 'first10' if you want them strictly in order 1->14)
+        state.commitOrder = [...shuffle(first10), ...shuffle(last5)];
+      } else {
+        // Fallback if data structure changes
+        state.commitOrder = shuffle(state.commits.map((_, i) => i));
+      }
     }
-  }
 
   // Shuffle candidate order per commit (once per participant)
   state.commits.forEach(commit => {
